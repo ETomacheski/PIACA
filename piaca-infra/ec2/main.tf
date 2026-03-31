@@ -116,6 +116,9 @@ resource "aws_instance" "ec2" {
 yum update -y
 amazon-linux-extras install docker -y
 yum install -y awscli
+  yum install -y amazon-ssm-agent || true
+  systemctl enable amazon-ssm-agent
+  systemctl start amazon-ssm-agent
 systemctl start docker
 systemctl enable docker
 usermod -aG docker ec2-user
