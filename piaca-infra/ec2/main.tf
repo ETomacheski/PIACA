@@ -77,6 +77,13 @@ resource "aws_iam_role_policy" "ec2_ssm_read_policy" {
   })
 }
 
+resource "aws_iam_role_policy_attachment" "ec2_ssm_managed_core" {
+  for_each = local.environments
+
+  role       = aws_iam_role.ec2_ssm_read_role[each.key].name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
 resource "aws_iam_instance_profile" "ec2_profile" {
   for_each = local.environments
 

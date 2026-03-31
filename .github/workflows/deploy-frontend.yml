@@ -26,26 +26,23 @@ jobs:
     steps:
       - name: Validar configuracao minima (dev)
         run: |
-          if [ -z "${{ secrets.DEV_EC2_HOST }}" ]; then
-            echo "Secret DEV_EC2_HOST nao configurado"
+          if [ -z "${{ secrets.AWS_ACCESS_KEY_ID }}" ]; then
+            echo "Secret AWS_ACCESS_KEY_ID nao configurado"
             exit 1
           fi
-          if [ -z "${{ secrets.EC2_SSH_USER }}" ]; then
-            echo "Secret EC2_SSH_USER nao configurado"
-            exit 1
-          fi
-          if [ -z "${{ secrets.EC2_SSH_PRIVATE_KEY }}" ]; then
-            echo "Secret EC2_SSH_PRIVATE_KEY nao configurado"
+          if [ -z "${{ secrets.AWS_SECRET_ACCESS_KEY }}" ]; then
+            echo "Secret AWS_SECRET_ACCESS_KEY nao configurado"
             exit 1
           fi
 
-      - name: Preparar chave SSH
-        run: |
-          mkdir -p ~/.ssh
-          printf '%s\n' "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > ~/.ssh/piaca_deploy_key
-          chmod 600 ~/.ssh/piaca_deploy_key
+      - name: Configurar credenciais AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
 
-      - name: Deploy frontend em development
+      - name: Deploy frontend em development via SSM
         run: |
           APP_DIR="${{ secrets.DEV_EC2_APP_DIR }}"
           if [ -z "$APP_DIR" ]; then
@@ -55,10 +52,44 @@ jobs:
             APP_DIR="/home/ec2-user/app"
           fi
 
+          INSTANCE_ID=$(aws ec2 describe-instances \
+            --filters "Name=tag:Name,Values=piaca-dev-ec2" "Name=instance-state-name,Values=running" \
+            --query "Reservations[].Instances[].InstanceId | [0]" \
+            --output text)
+
+          if [ -z "$INSTANCE_ID" ] || [ "$INSTANCE_ID" = "None" ]; then
+            echo "Instancia dev (tag Name=piaca-dev-ec2) nao encontrada em estado running"
+            exit 1
+          fi
+
           REPO_URL="https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
 
-          ssh -i ~/.ssh/piaca_deploy_key -o StrictHostKeyChecking=no "${{ secrets.EC2_SSH_USER }}@${{ secrets.DEV_EC2_HOST }}" \
-            "if [ ! -d '${APP_DIR}/.git' ]; then mkdir -p '$(dirname ${APP_DIR})' && git clone '${REPO_URL}' '${APP_DIR}'; fi && chmod +x ${APP_DIR}/scripts/deploy-ec2.sh ${APP_DIR}/scripts/sync-env-from-ssm.sh && ${APP_DIR}/scripts/deploy-ec2.sh frontend develop ${APP_DIR} docker-compose.yml dev"
+          COMMAND_ID=$(aws ssm send-command \
+            --instance-ids "$INSTANCE_ID" \
+            --document-name "AWS-RunShellScript" \
+            --comment "PIACA deploy frontend develop" \
+            --parameters commands="set -euo pipefail","APP_DIR='${APP_DIR}'","REPO_URL='${REPO_URL}'","if [ ! -d '${APP_DIR}/.git' ]; then mkdir -p '$(dirname ${APP_DIR})' && git clone '${REPO_URL}' '${APP_DIR}'; fi","cd '${APP_DIR}'","git remote set-url origin '${REPO_URL}'","chmod +x scripts/deploy-ec2.sh scripts/sync-env-from-ssm.sh || true","./scripts/deploy-ec2.sh frontend develop '${APP_DIR}' docker-compose.yml dev" \
+            --query "Command.CommandId" \
+            --output text)
+
+          aws ssm wait command-executed --command-id "$COMMAND_ID" --instance-id "$INSTANCE_ID"
+
+          STATUS=$(aws ssm list-command-invocations \
+            --command-id "$COMMAND_ID" \
+            --details \
+            --query "CommandInvocations[0].Status" \
+            --output text)
+
+          aws ssm list-command-invocations \
+            --command-id "$COMMAND_ID" \
+            --details \
+            --query "CommandInvocations[0].CommandPlugins[0].Output" \
+            --output text
+
+          if [ "$STATUS" != "Success" ]; then
+            echo "Deploy dev falhou com status: $STATUS"
+            exit 1
+          fi
 
   deploy-prod:
     if: github.ref_name == 'main'
@@ -68,26 +99,23 @@ jobs:
     steps:
       - name: Validar configuracao minima (prod)
         run: |
-          if [ -z "${{ secrets.PROD_EC2_HOST }}" ]; then
-            echo "Secret PROD_EC2_HOST nao configurado"
+          if [ -z "${{ secrets.AWS_ACCESS_KEY_ID }}" ]; then
+            echo "Secret AWS_ACCESS_KEY_ID nao configurado"
             exit 1
           fi
-          if [ -z "${{ secrets.EC2_SSH_USER }}" ]; then
-            echo "Secret EC2_SSH_USER nao configurado"
-            exit 1
-          fi
-          if [ -z "${{ secrets.EC2_SSH_PRIVATE_KEY }}" ]; then
-            echo "Secret EC2_SSH_PRIVATE_KEY nao configurado"
+          if [ -z "${{ secrets.AWS_SECRET_ACCESS_KEY }}" ]; then
+            echo "Secret AWS_SECRET_ACCESS_KEY nao configurado"
             exit 1
           fi
 
-      - name: Preparar chave SSH
-        run: |
-          mkdir -p ~/.ssh
-          printf '%s\n' "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > ~/.ssh/piaca_deploy_key
-          chmod 600 ~/.ssh/piaca_deploy_key
+      - name: Configurar credenciais AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
 
-      - name: Deploy frontend em production
+      - name: Deploy frontend em production via SSM
         run: |
           APP_DIR="${{ secrets.PROD_EC2_APP_DIR }}"
           if [ -z "$APP_DIR" ]; then
@@ -97,7 +125,41 @@ jobs:
             APP_DIR="/home/ec2-user/app"
           fi
 
+          INSTANCE_ID=$(aws ec2 describe-instances \
+            --filters "Name=tag:Name,Values=piaca-prod-ec2" "Name=instance-state-name,Values=running" \
+            --query "Reservations[].Instances[].InstanceId | [0]" \
+            --output text)
+
+          if [ -z "$INSTANCE_ID" ] || [ "$INSTANCE_ID" = "None" ]; then
+            echo "Instancia prod (tag Name=piaca-prod-ec2) nao encontrada em estado running"
+            exit 1
+          fi
+
           REPO_URL="https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
 
-          ssh -i ~/.ssh/piaca_deploy_key -o StrictHostKeyChecking=no "${{ secrets.EC2_SSH_USER }}@${{ secrets.PROD_EC2_HOST }}" \
-            "if [ ! -d '${APP_DIR}/.git' ]; then mkdir -p '$(dirname ${APP_DIR})' && git clone '${REPO_URL}' '${APP_DIR}'; fi && chmod +x ${APP_DIR}/scripts/deploy-ec2.sh ${APP_DIR}/scripts/sync-env-from-ssm.sh && ${APP_DIR}/scripts/deploy-ec2.sh frontend main ${APP_DIR} docker-compose.yml prod"
+          COMMAND_ID=$(aws ssm send-command \
+            --instance-ids "$INSTANCE_ID" \
+            --document-name "AWS-RunShellScript" \
+            --comment "PIACA deploy frontend main" \
+            --parameters commands="set -euo pipefail","APP_DIR='${APP_DIR}'","REPO_URL='${REPO_URL}'","if [ ! -d '${APP_DIR}/.git' ]; then mkdir -p '$(dirname ${APP_DIR})' && git clone '${REPO_URL}' '${APP_DIR}'; fi","cd '${APP_DIR}'","git remote set-url origin '${REPO_URL}'","chmod +x scripts/deploy-ec2.sh scripts/sync-env-from-ssm.sh || true","./scripts/deploy-ec2.sh frontend main '${APP_DIR}' docker-compose.yml prod" \
+            --query "Command.CommandId" \
+            --output text)
+
+          aws ssm wait command-executed --command-id "$COMMAND_ID" --instance-id "$INSTANCE_ID"
+
+          STATUS=$(aws ssm list-command-invocations \
+            --command-id "$COMMAND_ID" \
+            --details \
+            --query "CommandInvocations[0].Status" \
+            --output text)
+
+          aws ssm list-command-invocations \
+            --command-id "$COMMAND_ID" \
+            --details \
+            --query "CommandInvocations[0].CommandPlugins[0].Output" \
+            --output text
+
+          if [ "$STATUS" != "Success" ]; then
+            echo "Deploy prod falhou com status: $STATUS"
+            exit 1
+          fi
