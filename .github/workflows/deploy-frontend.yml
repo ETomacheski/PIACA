@@ -62,6 +62,26 @@ jobs:
             exit 1
           fi
 
+          echo "Aguardando instancia $INSTANCE_ID ficar Online no SSM..."
+          for i in $(seq 1 20); do
+            PING_STATUS=$(aws ssm describe-instance-information \
+              --filters "Key=InstanceIds,Values=$INSTANCE_ID" \
+              --query "InstanceInformationList[0].PingStatus" \
+              --output text)
+
+            if [ "$PING_STATUS" = "Online" ]; then
+              echo "Instancia $INSTANCE_ID esta Online no SSM."
+              break
+            fi
+
+            if [ "$i" -eq 20 ]; then
+              echo "Instancia $INSTANCE_ID nao ficou Online no SSM. Verifique IAM Role (AmazonSSMManagedInstanceCore), SSM Agent e conectividade de saida da EC2."
+              exit 1
+            fi
+
+            sleep 15
+          done
+
           REPO_URL="https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
           cat > ssm-commands.json <<'EOF'
           {"commands":[
@@ -151,6 +171,26 @@ jobs:
             echo "Instancia prod (tag Name=piaca-prod-ec2) nao encontrada em estado running"
             exit 1
           fi
+
+          echo "Aguardando instancia $INSTANCE_ID ficar Online no SSM..."
+          for i in $(seq 1 20); do
+            PING_STATUS=$(aws ssm describe-instance-information \
+              --filters "Key=InstanceIds,Values=$INSTANCE_ID" \
+              --query "InstanceInformationList[0].PingStatus" \
+              --output text)
+
+            if [ "$PING_STATUS" = "Online" ]; then
+              echo "Instancia $INSTANCE_ID esta Online no SSM."
+              break
+            fi
+
+            if [ "$i" -eq 20 ]; then
+              echo "Instancia $INSTANCE_ID nao ficou Online no SSM. Verifique IAM Role (AmazonSSMManagedInstanceCore), SSM Agent e conectividade de saida da EC2."
+              exit 1
+            fi
+
+            sleep 15
+          done
 
           REPO_URL="https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
           cat > ssm-commands.json <<'EOF'
