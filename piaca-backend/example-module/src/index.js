@@ -24,7 +24,7 @@ const server = http.createServer(async (req, res) => {
     res.writeHead(200, { "Content-Type": "application/json" })
     res.end(
       JSON.stringify({
-        message: "example module running",
+        message: "example module running test",
         total: result.rows.length,
         data: result.rows
       })
