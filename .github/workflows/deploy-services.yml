@@ -63,14 +63,13 @@ jobs:
           fi
 
           REPO_URL="https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
-          APP_PARENT_DIR="$(dirname \"$APP_DIR\")"
-
           cat > ssm-commands.json <<EOF
           {"commands":[
             "set -euo pipefail",
             "APP_DIR='${APP_DIR}'",
             "REPO_URL='${REPO_URL}'",
-            "if [ ! -d '${APP_DIR}/.git' ]; then mkdir -p '${APP_PARENT_DIR}' && git clone '${REPO_URL}' '${APP_DIR}'; fi",
+            "PARENT_DIR=$(dirname \"$APP_DIR\")",
+            "if [ ! -d \"$APP_DIR/.git\" ]; then mkdir -p \"$PARENT_DIR\" && git clone \"$REPO_URL\" \"$APP_DIR\"; fi",
             "cd '${APP_DIR}'",
             "git remote set-url origin '${REPO_URL}'",
             "chmod +x scripts/deploy-ec2.sh scripts/sync-env-from-ssm.sh || true",
@@ -150,14 +149,13 @@ jobs:
           fi
 
           REPO_URL="https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
-          APP_PARENT_DIR="$(dirname \"$APP_DIR\")"
-
           cat > ssm-commands.json <<EOF
           {"commands":[
             "set -euo pipefail",
             "APP_DIR='${APP_DIR}'",
             "REPO_URL='${REPO_URL}'",
-            "if [ ! -d '${APP_DIR}/.git' ]; then mkdir -p '${APP_PARENT_DIR}' && git clone '${REPO_URL}' '${APP_DIR}'; fi",
+            "PARENT_DIR=$(dirname \"$APP_DIR\")",
+            "if [ ! -d \"$APP_DIR/.git\" ]; then mkdir -p \"$PARENT_DIR\" && git clone \"$REPO_URL\" \"$APP_DIR\"; fi",
             "cd '${APP_DIR}'",
             "git remote set-url origin '${REPO_URL}'",
             "chmod +x scripts/deploy-ec2.sh scripts/sync-env-from-ssm.sh || true",
