@@ -86,6 +86,9 @@ jobs:
           cat > ssm-commands.json <<'EOF'
           {"commands":[
             "set -euo pipefail",
+            "LOCK_FILE=/tmp/piaca-deploy.lock",
+            "exec 9>\"$LOCK_FILE\"",
+            "flock -w 600 9 || { echo \"Nao foi possivel adquirir lock de deploy\"; exit 1; }",
             "APP_DIR='__APP_DIR__'",
             "REPO_URL='__REPO_URL__'",
             "PARENT_DIR=$(dirname \"$APP_DIR\")",
@@ -209,6 +212,9 @@ jobs:
           cat > ssm-commands.json <<'EOF'
           {"commands":[
             "set -euo pipefail",
+            "LOCK_FILE=/tmp/piaca-deploy.lock",
+            "exec 9>\"$LOCK_FILE\"",
+            "flock -w 600 9 || { echo \"Nao foi possivel adquirir lock de deploy\"; exit 1; }",
             "APP_DIR='__APP_DIR__'",
             "REPO_URL='__REPO_URL__'",
             "PARENT_DIR=$(dirname \"$APP_DIR\")",
