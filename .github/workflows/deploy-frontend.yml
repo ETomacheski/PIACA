@@ -63,12 +63,26 @@ jobs:
           fi
 
           REPO_URL="https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
+          APP_PARENT_DIR="$(dirname \"$APP_DIR\")"
+
+          cat > ssm-commands.json <<EOF
+          {"commands":[
+            "set -euo pipefail",
+            "APP_DIR='${APP_DIR}'",
+            "REPO_URL='${REPO_URL}'",
+            "if [ ! -d '${APP_DIR}/.git' ]; then mkdir -p '${APP_PARENT_DIR}' && git clone '${REPO_URL}' '${APP_DIR}'; fi",
+            "cd '${APP_DIR}'",
+            "git remote set-url origin '${REPO_URL}'",
+            "chmod +x scripts/deploy-ec2.sh scripts/sync-env-from-ssm.sh || true",
+            "./scripts/deploy-ec2.sh frontend develop '${APP_DIR}' docker-compose.yml dev"
+          ]}
+          EOF
 
           COMMAND_ID=$(aws ssm send-command \
             --instance-ids "$INSTANCE_ID" \
             --document-name "AWS-RunShellScript" \
             --comment "PIACA deploy frontend develop" \
-            --parameters commands="set -euo pipefail","APP_DIR='${APP_DIR}'","REPO_URL='${REPO_URL}'","if [ ! -d '${APP_DIR}/.git' ]; then mkdir -p '$(dirname ${APP_DIR})' && git clone '${REPO_URL}' '${APP_DIR}'; fi","cd '${APP_DIR}'","git remote set-url origin '${REPO_URL}'","chmod +x scripts/deploy-ec2.sh scripts/sync-env-from-ssm.sh || true","./scripts/deploy-ec2.sh frontend develop '${APP_DIR}' docker-compose.yml dev" \
+            --parameters file://ssm-commands.json \
             --query "Command.CommandId" \
             --output text)
 
@@ -136,12 +150,26 @@ jobs:
           fi
 
           REPO_URL="https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
+          APP_PARENT_DIR="$(dirname \"$APP_DIR\")"
+
+          cat > ssm-commands.json <<EOF
+          {"commands":[
+            "set -euo pipefail",
+            "APP_DIR='${APP_DIR}'",
+            "REPO_URL='${REPO_URL}'",
+            "if [ ! -d '${APP_DIR}/.git' ]; then mkdir -p '${APP_PARENT_DIR}' && git clone '${REPO_URL}' '${APP_DIR}'; fi",
+            "cd '${APP_DIR}'",
+            "git remote set-url origin '${REPO_URL}'",
+            "chmod +x scripts/deploy-ec2.sh scripts/sync-env-from-ssm.sh || true",
+            "./scripts/deploy-ec2.sh frontend main '${APP_DIR}' docker-compose.yml prod"
+          ]}
+          EOF
 
           COMMAND_ID=$(aws ssm send-command \
             --instance-ids "$INSTANCE_ID" \
             --document-name "AWS-RunShellScript" \
             --comment "PIACA deploy frontend main" \
-            --parameters commands="set -euo pipefail","APP_DIR='${APP_DIR}'","REPO_URL='${REPO_URL}'","if [ ! -d '${APP_DIR}/.git' ]; then mkdir -p '$(dirname ${APP_DIR})' && git clone '${REPO_URL}' '${APP_DIR}'; fi","cd '${APP_DIR}'","git remote set-url origin '${REPO_URL}'","chmod +x scripts/deploy-ec2.sh scripts/sync-env-from-ssm.sh || true","./scripts/deploy-ec2.sh frontend main '${APP_DIR}' docker-compose.yml prod" \
+            --parameters file://ssm-commands.json \
             --query "Command.CommandId" \
             --output text)
 
