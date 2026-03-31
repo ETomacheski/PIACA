@@ -24,9 +24,11 @@ git fetch origin
 git checkout "$BRANCH"
 git reset --hard "origin/$BRANCH"
 
-if [ -n "$ENVIRONMENT" ] && [ -x "scripts/sync-env-from-ssm.sh" ]; then
+if [ -n "$ENVIRONMENT" ] && [ -f "scripts/sync-env-from-ssm.sh" ]; then
   echo "[deploy] Sincronizando variaveis de ambiente do SSM para $ENVIRONMENT"
-  scripts/sync-env-from-ssm.sh "$ENVIRONMENT" "$APP_DIR/.env"
+  bash scripts/sync-env-from-ssm.sh "$ENVIRONMENT" "$APP_DIR/.env"
+elif [ -n "$ENVIRONMENT" ]; then
+  echo "[deploy] Aviso: scripts/sync-env-from-ssm.sh nao encontrado; seguindo sem sincronizar .env"
 fi
 
 if [ ! -f "$COMPOSE_FILE" ]; then
