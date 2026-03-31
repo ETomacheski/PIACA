@@ -21,9 +21,46 @@ fi
 
 BASE_PATH="/piaca/${ENVIRONMENT}/db"
 
+resolve_region() {
+  if [ -n "${AWS_REGION:-}" ]; then
+    echo "${AWS_REGION}"
+    return
+  fi
+
+  if [ -n "${AWS_DEFAULT_REGION:-}" ]; then
+    echo "${AWS_DEFAULT_REGION}"
+    return
+  fi
+
+  # Try IMDSv2 first, then IMDSv1 as fallback.
+  local token
+  token="$(curl -sS -m 2 -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 60" || true)"
+
+  if [ -n "$token" ]; then
+    curl -sS -m 2 -H "X-aws-ec2-metadata-token: $token" "http://169.254.169.254/latest/dynamic/instance-identity/document" \
+      | sed -n 's/.*"region"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' \
+      | head -n 1
+    return
+  fi
+
+  curl -sS -m 2 "http://169.254.169.254/latest/dynamic/instance-identity/document" \
+    | sed -n 's/.*"region"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' \
+    | head -n 1
+}
+
+AWS_REGION_RESOLVED="$(resolve_region)"
+
+if [ -z "$AWS_REGION_RESOLVED" ]; then
+  echo "Nao foi possivel resolver a regiao AWS. Defina AWS_REGION/AWS_DEFAULT_REGION na instancia."
+  exit 1
+fi
+
+echo "Lendo parametros do SSM na regiao ${AWS_REGION_RESOLVED}"
+
 fetch_param() {
   local name="$1"
   aws ssm get-parameter \
+    --region "${AWS_REGION_RESOLVED}" \
     --name "${BASE_PATH}/${name}" \
     --with-decryption \
     --query 'Parameter.Value' \
