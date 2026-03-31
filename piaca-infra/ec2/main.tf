@@ -2,12 +2,6 @@ provider "aws" {
   region = "us-east-1"
 }
 
-variable "app_repo_url" {
-  description = "Repositorio da aplicacao para clone na EC2"
-  type        = string
-  default     = "https://github.com/estevamcabral/PIACA.git"
-}
-
 variable "app_dir" {
   description = "Diretorio da aplicacao na EC2"
   type        = string
@@ -26,27 +20,11 @@ variable "instance_type" {
   default     = "t3.micro"
 }
 
-variable "app_branches" {
-  description = "Mapeia ambiente para branch inicial"
-  type        = map(string)
-  default = {
-    dev  = "develop"
-    prod = "main"
-  }
-
-  validation {
-    condition     = can(var.app_branches.dev) && can(var.app_branches.prod)
-    error_message = "app_branches deve conter as chaves dev e prod."
-  }
-}
-
 locals {
   environments = {
-    for env, branch in var.app_branches : env => {
-      branch     = branch
+    for env in ["dev", "prod"] : env => {
       ssm_prefix = "/piaca/${env}/db"
     }
-    if contains(["dev", "prod"], env)
   }
 }
 
@@ -138,18 +116,8 @@ curl -L https://github.com/docker/compose/releases/download/v2.27.0/docker-compo
 chmod +x /usr/local/bin/docker-compose
 ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose
 yum install -y git
-if [ ! -d "${var.app_dir}/.git" ]; then
-  git clone ${var.app_repo_url} ${var.app_dir}
-fi
-cd ${var.app_dir}
-git fetch origin
-git checkout ${each.value.branch}
-git reset --hard origin/${each.value.branch}
-chmod +x scripts/deploy-ec2.sh scripts/sync-env-from-ssm.sh || true
-if [ -x "scripts/sync-env-from-ssm.sh" ]; then
-  scripts/sync-env-from-ssm.sh ${each.key} .env
-fi
-docker compose -f docker-compose.yml up -d --build || docker-compose -f docker-compose.yml up -d --build
+mkdir -p ${var.app_dir}
+chown -R ec2-user:ec2-user ${var.app_dir}
 EOF
 
   tags = {

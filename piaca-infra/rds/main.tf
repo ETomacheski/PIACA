@@ -18,12 +18,22 @@ variable "db_password_dev" {
   description = "Senha do banco de desenvolvimento"
   type        = string
   sensitive   = true
+
+  validation {
+    condition     = length(var.db_password_dev) >= 8 && length(var.db_password_dev) <= 41 && length(regexall("[/@\" ]", var.db_password_dev)) == 0
+    error_message = "db_password_dev deve ter 8-41 caracteres e nao pode conter /, @, aspas duplas ou espaco."
+  }
 }
 
 variable "db_password_prod" {
   description = "Senha do banco de producao"
   type        = string
   sensitive   = true
+
+  validation {
+    condition     = length(var.db_password_prod) >= 8 && length(var.db_password_prod) <= 41 && length(regexall("[/@\" ]", var.db_password_prod)) == 0
+    error_message = "db_password_prod deve ter 8-41 caracteres e nao pode conter /, @, aspas duplas ou espaco."
+  }
 }
 
 variable "db_instance_class" {

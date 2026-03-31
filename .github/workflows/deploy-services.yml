@@ -55,8 +55,10 @@ jobs:
             APP_DIR="/home/ec2-user/app"
           fi
 
+          REPO_URL="https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
+
           ssh -i ~/.ssh/piaca_deploy_key -o StrictHostKeyChecking=no "${{ secrets.EC2_SSH_USER }}@${{ secrets.DEV_EC2_HOST }}" \
-            "chmod +x ${APP_DIR}/scripts/deploy-ec2.sh ${APP_DIR}/scripts/sync-env-from-ssm.sh && ${APP_DIR}/scripts/deploy-ec2.sh services develop ${APP_DIR} docker-compose.yml dev"
+            "if [ ! -d '${APP_DIR}/.git' ]; then mkdir -p '$(dirname ${APP_DIR})' && git clone '${REPO_URL}' '${APP_DIR}'; fi && chmod +x ${APP_DIR}/scripts/deploy-ec2.sh ${APP_DIR}/scripts/sync-env-from-ssm.sh && ${APP_DIR}/scripts/deploy-ec2.sh services develop ${APP_DIR} docker-compose.yml dev"
 
   deploy-prod:
     if: github.ref_name == 'main'
@@ -95,5 +97,7 @@ jobs:
             APP_DIR="/home/ec2-user/app"
           fi
 
+          REPO_URL="https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
+
           ssh -i ~/.ssh/piaca_deploy_key -o StrictHostKeyChecking=no "${{ secrets.EC2_SSH_USER }}@${{ secrets.PROD_EC2_HOST }}" \
-            "chmod +x ${APP_DIR}/scripts/deploy-ec2.sh ${APP_DIR}/scripts/sync-env-from-ssm.sh && ${APP_DIR}/scripts/deploy-ec2.sh services main ${APP_DIR} docker-compose.yml prod"
+            "if [ ! -d '${APP_DIR}/.git' ]; then mkdir -p '$(dirname ${APP_DIR})' && git clone '${REPO_URL}' '${APP_DIR}'; fi && chmod +x ${APP_DIR}/scripts/deploy-ec2.sh ${APP_DIR}/scripts/sync-env-from-ssm.sh && ${APP_DIR}/scripts/deploy-ec2.sh services main ${APP_DIR} docker-compose.yml prod"
