@@ -63,19 +63,23 @@ jobs:
           fi
 
           REPO_URL="https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
-          cat > ssm-commands.json <<EOF
+          cat > ssm-commands.json <<'EOF'
           {"commands":[
             "set -euo pipefail",
-            "APP_DIR='${APP_DIR}'",
-            "REPO_URL='${REPO_URL}'",
+            "APP_DIR='__APP_DIR__'",
+            "REPO_URL='__REPO_URL__'",
             "PARENT_DIR=$(dirname \"$APP_DIR\")",
             "if [ ! -d \"$APP_DIR/.git\" ]; then mkdir -p \"$PARENT_DIR\" && git clone \"$REPO_URL\" \"$APP_DIR\"; fi",
-            "cd '${APP_DIR}'",
-            "git remote set-url origin '${REPO_URL}'",
+            "cd \"$APP_DIR\"",
+            "git remote set-url origin \"$REPO_URL\"",
             "chmod +x scripts/deploy-ec2.sh scripts/sync-env-from-ssm.sh || true",
-            "./scripts/deploy-ec2.sh services develop '${APP_DIR}' docker-compose.yml dev"
+            "./scripts/deploy-ec2.sh services develop \"$APP_DIR\" docker-compose.yml dev"
           ]}
           EOF
+
+          ESCAPED_APP_DIR=${APP_DIR//&/\\&}
+          ESCAPED_REPO_URL=${REPO_URL//&/\\&}
+          sed -i "s|__APP_DIR__|$ESCAPED_APP_DIR|g; s|__REPO_URL__|$ESCAPED_REPO_URL|g" ssm-commands.json
 
           COMMAND_ID=$(aws ssm send-command \
             --instance-ids "$INSTANCE_ID" \
@@ -149,19 +153,23 @@ jobs:
           fi
 
           REPO_URL="https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
-          cat > ssm-commands.json <<EOF
+          cat > ssm-commands.json <<'EOF'
           {"commands":[
             "set -euo pipefail",
-            "APP_DIR='${APP_DIR}'",
-            "REPO_URL='${REPO_URL}'",
+            "APP_DIR='__APP_DIR__'",
+            "REPO_URL='__REPO_URL__'",
             "PARENT_DIR=$(dirname \"$APP_DIR\")",
             "if [ ! -d \"$APP_DIR/.git\" ]; then mkdir -p \"$PARENT_DIR\" && git clone \"$REPO_URL\" \"$APP_DIR\"; fi",
-            "cd '${APP_DIR}'",
-            "git remote set-url origin '${REPO_URL}'",
+            "cd \"$APP_DIR\"",
+            "git remote set-url origin \"$REPO_URL\"",
             "chmod +x scripts/deploy-ec2.sh scripts/sync-env-from-ssm.sh || true",
-            "./scripts/deploy-ec2.sh services main '${APP_DIR}' docker-compose.yml prod"
+            "./scripts/deploy-ec2.sh services main \"$APP_DIR\" docker-compose.yml prod"
           ]}
           EOF
+
+          ESCAPED_APP_DIR=${APP_DIR//&/\\&}
+          ESCAPED_REPO_URL=${REPO_URL//&/\\&}
+          sed -i "s|__APP_DIR__|$ESCAPED_APP_DIR|g; s|__REPO_URL__|$ESCAPED_REPO_URL|g" ssm-commands.json
 
           COMMAND_ID=$(aws ssm send-command \
             --instance-ids "$INSTANCE_ID" \
