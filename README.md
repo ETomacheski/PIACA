@@ -198,3 +198,99 @@ docker compose -f docker-compose.local.yml down
 - o arquivo `docker-compose.yml` representa uma configuracao mais generica, usando variaveis externas de ambiente para banco.
 - os servicos dos grupos A, B, C e D estao comentados no compose local atual; cada grupo deve descomentar o seu servico quando for trabalhar nele.
 - qualquer mudanca em `package.json`, bibliotecas instaladas, `Dockerfile` ou configuracao do container exige `build` novamente.
+
+## Estrategia de Branches e Deploy
+
+Fluxo sugerido para os grupos:
+
+- cada grupo trabalha na sua branch (exemplo: `group-a/feature-x`).
+- abre PR para `develop`.
+- `develop` representa ambiente de desenvolvimento (EC2 dev).
+- `main` representa ambiente de producao (EC2 prod).
+- deploy para producao acontece apenas em push na `main`.
+
+Resumo de promocao:
+
+1. branch do grupo -> `develop` (valida em dev)
+2. `develop` -> `main` (promove para prod)
+
+## Pipelines de Deploy (GitHub Actions)
+
+Foram criados dois workflows:
+
+- `.github/workflows/deploy-frontend.yml`
+- `.github/workflows/deploy-services.yml`
+
+Comportamento:
+
+- push em `develop` faz deploy na EC2 de desenvolvimento.
+- push em `main` faz deploy na EC2 de producao.
+- pipeline de frontend reage a mudancas em `piaca-frontend/**`.
+- pipeline de servicos reage a mudancas em `piaca-backend/**`.
+
+O deploy remoto usa o script:
+
+- `scripts/deploy-ec2.sh`
+
+Esse script atualiza o codigo para a branch do evento e executa `docker compose up -d --build` somente no stack correspondente (frontend ou services).
+
+Antes de subir o compose, o deploy sincroniza as variaveis de banco para `.env` usando o script `scripts/sync-env-from-ssm.sh`.
+
+## Secrets Necessarios no GitHub
+
+Configure os seguintes secrets no repositorio:
+
+- `DEV_EC2_HOST`: IP ou DNS da EC2 de desenvolvimento.
+- `PROD_EC2_HOST`: IP ou DNS da EC2 de producao.
+- `EC2_SSH_USER`: usuario SSH da EC2 (exemplo: `ec2-user`).
+- `EC2_SSH_PRIVATE_KEY`: chave privada com acesso SSH as EC2.
+- `EC2_APP_DIR` (opcional): caminho do repo na EC2. Default usado: `/home/ec2-user/app`.
+
+Secrets extras recomendados para separar dev e prod por completo:
+
+- `DEV_EC2_APP_DIR` (opcional): caminho do repo na EC2 de dev.
+- `PROD_EC2_APP_DIR` (opcional): caminho do repo na EC2 de prod.
+
+Nao e necessario salvar `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER` e `DB_PASSWORD` no GitHub.
+Esses valores sao publicados no AWS SSM Parameter Store pelo Terraform do RDS e lidos pela EC2 com IAM Role.
+
+Prefixos SSM usados:
+
+- dev: `/piaca/dev/db/*`
+- prod: `/piaca/prod/db/*`
+
+## Ajustes Recomendados de Infra
+
+Para os pipelines funcionarem bem em dev e prod, o ideal e ter duas instancias EC2:
+
+- uma EC2 para `develop`.
+- uma EC2 para `main`.
+
+Tambem e recomendado evoluir o Terraform para:
+
+- manter estados separados por camada (`network`, `rds`, `ec2`) e aplicar com arquivos `.tfvars`.
+
+Exemplos de arquivos para facilitar:
+
+- `piaca-infra/rds/all-envs.tfvars.example`
+- `piaca-infra/ec2/all-envs.tfvars.example`
+
+Com a organizacao atual, `rds/main.tf` cria os dois bancos (`dev` e `prod`) no mesmo `apply`.
+
+Exemplo de aplicacao do RDS:
+
+```bash
+cd piaca-infra/rds
+terraform init
+terraform apply -var-file=all-envs.tfvars
+```
+
+Da mesma forma, `ec2/main.tf` cria as duas EC2 (`dev` e `prod`) no mesmo `apply`.
+
+Depois, para EC2:
+
+```bash
+cd ../ec2
+terraform init
+terraform apply -var-file=all-envs.tfvars
+```

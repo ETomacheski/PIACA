@@ -1,0 +1,99 @@
+name: Deploy Services
+
+on:
+  push:
+    branches:
+      - develop
+      - main
+    paths:
+      - 'piaca-backend/**'
+      - 'docker-compose.yml'
+      - 'scripts/deploy-ec2.sh'
+      - 'scripts/sync-env-from-ssm.sh'
+      - '.github/workflows/deploy-services.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-services-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy-dev:
+    if: github.ref_name == 'develop'
+    runs-on: ubuntu-latest
+    environment: development
+
+    steps:
+      - name: Validar configuracao minima (dev)
+        run: |
+          if [ -z "${{ secrets.DEV_EC2_HOST }}" ]; then
+            echo "Secret DEV_EC2_HOST nao configurado"
+            exit 1
+          fi
+          if [ -z "${{ secrets.EC2_SSH_USER }}" ]; then
+            echo "Secret EC2_SSH_USER nao configurado"
+            exit 1
+          fi
+          if [ -z "${{ secrets.EC2_SSH_PRIVATE_KEY }}" ]; then
+            echo "Secret EC2_SSH_PRIVATE_KEY nao configurado"
+            exit 1
+          fi
+
+      - name: Preparar chave SSH
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > ~/.ssh/piaca_deploy_key
+          chmod 600 ~/.ssh/piaca_deploy_key
+
+      - name: Deploy servicos em development
+        run: |
+          APP_DIR="${{ secrets.DEV_EC2_APP_DIR }}"
+          if [ -z "$APP_DIR" ]; then
+            APP_DIR="${{ secrets.EC2_APP_DIR }}"
+          fi
+          if [ -z "$APP_DIR" ]; then
+            APP_DIR="/home/ec2-user/app"
+          fi
+
+          ssh -i ~/.ssh/piaca_deploy_key -o StrictHostKeyChecking=no "${{ secrets.EC2_SSH_USER }}@${{ secrets.DEV_EC2_HOST }}" \
+            "chmod +x ${APP_DIR}/scripts/deploy-ec2.sh ${APP_DIR}/scripts/sync-env-from-ssm.sh && ${APP_DIR}/scripts/deploy-ec2.sh services develop ${APP_DIR} docker-compose.yml dev"
+
+  deploy-prod:
+    if: github.ref_name == 'main'
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Validar configuracao minima (prod)
+        run: |
+          if [ -z "${{ secrets.PROD_EC2_HOST }}" ]; then
+            echo "Secret PROD_EC2_HOST nao configurado"
+            exit 1
+          fi
+          if [ -z "${{ secrets.EC2_SSH_USER }}" ]; then
+            echo "Secret EC2_SSH_USER nao configurado"
+            exit 1
+          fi
+          if [ -z "${{ secrets.EC2_SSH_PRIVATE_KEY }}" ]; then
+            echo "Secret EC2_SSH_PRIVATE_KEY nao configurado"
+            exit 1
+          fi
+
+      - name: Preparar chave SSH
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > ~/.ssh/piaca_deploy_key
+          chmod 600 ~/.ssh/piaca_deploy_key
+
+      - name: Deploy servicos em production
+        run: |
+          APP_DIR="${{ secrets.PROD_EC2_APP_DIR }}"
+          if [ -z "$APP_DIR" ]; then
+            APP_DIR="${{ secrets.EC2_APP_DIR }}"
+          fi
+          if [ -z "$APP_DIR" ]; then
+            APP_DIR="/home/ec2-user/app"
+          fi
+
+          ssh -i ~/.ssh/piaca_deploy_key -o StrictHostKeyChecking=no "${{ secrets.EC2_SSH_USER }}@${{ secrets.PROD_EC2_HOST }}" \
+            "chmod +x ${APP_DIR}/scripts/deploy-ec2.sh ${APP_DIR}/scripts/sync-env-from-ssm.sh && ${APP_DIR}/scripts/deploy-ec2.sh services main ${APP_DIR} docker-compose.yml prod"
