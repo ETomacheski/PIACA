@@ -34,7 +34,7 @@ if [ ! -f "$COMPOSE_FILE" ]; then
   exit 1
 fi
 
-mapfile -t ALL_SERVICES < <(docker compose -f "$COMPOSE_FILE" config --services)
+mapfile -t ALL_SERVICES < <(docker-compose -f "$COMPOSE_FILE" config --services)
 
 if [ "${#ALL_SERVICES[@]}" -eq 0 ]; then
   echo "Nenhum servico encontrado em $COMPOSE_FILE"
@@ -56,7 +56,7 @@ if [ "$STACK" = "frontend" ]; then
   fi
 
   echo "[deploy] Subindo frontend: $FRONTEND_SERVICE"
-  docker compose -f "$COMPOSE_FILE" up -d --build "$FRONTEND_SERVICE"
+  docker-compose -f "$COMPOSE_FILE" up -d --build "$FRONTEND_SERVICE"
   exit 0
 fi
 
@@ -74,4 +74,4 @@ if [ "${#DEPLOY_SERVICES[@]}" -eq 0 ]; then
 fi
 
 echo "[deploy] Subindo servicos: ${DEPLOY_SERVICES[*]}"
-docker compose -f "$COMPOSE_FILE" up -d --build "${DEPLOY_SERVICES[@]}"
+docker-compose -f "$COMPOSE_FILE" up -d --build "${DEPLOY_SERVICES[@]}"
