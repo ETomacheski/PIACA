@@ -2,6 +2,12 @@ provider "aws" {
   region = "us-east-1"
 }
 
+variable "ssh_ingress_cidrs" {
+  description = "CIDRs autorizados para SSH na EC2"
+  type        = list(string)
+  default     = ["189.6.248.124/32"]
+}
+
 resource "aws_key_pair" "key" {
   key_name   = "piaca-key"
   public_key = file("C:/Users/estev/.ssh/id_ed25519.pub")
@@ -21,7 +27,7 @@ resource "aws_security_group" "ec2_sg" {
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
-    cidr_blocks = ["189.6.248.124/32"]
+    cidr_blocks = var.ssh_ingress_cidrs
   }
 
   egress {
