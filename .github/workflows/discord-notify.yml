@@ -1,0 +1,19 @@
+name: Notify Discord on Migrations Update
+
+on:
+  push:
+    branches:
+      - develop
+    paths:
+      - 'piaca-backend/migrations/**'
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Send Discord Notification
+        run: |
+          curl -H "Content-Type: application/json" \
+          -d "{\"content\":\"🚨 Merge na develop com mudanças em migrations!\"}" \
+          ${{ secrets.DISCORD_WEBHOOK }}
