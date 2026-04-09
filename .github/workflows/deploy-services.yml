@@ -86,6 +86,9 @@ jobs:
           cat > ssm-commands.json <<'EOF'
           {"commands":[
             "set -euo pipefail",
+            "if [ -z \"${HOME:-}\" ]; then HOME=$(getent passwd \"$(id -u)\" | cut -d: -f6 || true); export HOME; fi",
+            "if [ -z \"${HOME:-}\" ]; then HOME=/tmp; export HOME; fi",
+            "mkdir -p \"$HOME\"",
             "LOCK_FILE=/tmp/piaca-deploy.lock",
             "exec 9>\"$LOCK_FILE\"",
             "flock -w 600 9 || { echo \"Nao foi possivel adquirir lock de deploy\"; exit 1; }",
@@ -95,7 +98,7 @@ jobs:
             "PARENT_DIR=$(dirname \"$APP_DIR\")",
             "if [ ! -d \"$APP_DIR/.git\" ]; then mkdir -p \"$PARENT_DIR\" && git clone \"$REPO_URL\" \"$APP_DIR\"; fi",
             "cd \"$APP_DIR\"",
-            "git config --global --add safe.directory \"$APP_DIR\"",
+            "git config --local --replace-all safe.directory \"$APP_DIR\"",
             "git remote set-url origin \"$REPO_URL\"",
             "git fetch origin \"$TARGET_BRANCH\"",
             "git checkout -B \"$TARGET_BRANCH\" \"origin/$TARGET_BRANCH\"",
@@ -216,6 +219,9 @@ jobs:
           cat > ssm-commands.json <<'EOF'
           {"commands":[
             "set -euo pipefail",
+            "if [ -z \"${HOME:-}\" ]; then HOME=$(getent passwd \"$(id -u)\" | cut -d: -f6 || true); export HOME; fi",
+            "if [ -z \"${HOME:-}\" ]; then HOME=/tmp; export HOME; fi",
+            "mkdir -p \"$HOME\"",
             "LOCK_FILE=/tmp/piaca-deploy.lock",
             "exec 9>\"$LOCK_FILE\"",
             "flock -w 600 9 || { echo \"Nao foi possivel adquirir lock de deploy\"; exit 1; }",
@@ -225,7 +231,7 @@ jobs:
             "PARENT_DIR=$(dirname \"$APP_DIR\")",
             "if [ ! -d \"$APP_DIR/.git\" ]; then mkdir -p \"$PARENT_DIR\" && git clone \"$REPO_URL\" \"$APP_DIR\"; fi",
             "cd \"$APP_DIR\"",
-            "git config --global --add safe.directory \"$APP_DIR\"",
+            "git config --local --replace-all safe.directory \"$APP_DIR\"",
             "git remote set-url origin \"$REPO_URL\"",
             "git fetch origin \"$TARGET_BRANCH\"",
             "git checkout -B \"$TARGET_BRANCH\" \"origin/$TARGET_BRANCH\"",
