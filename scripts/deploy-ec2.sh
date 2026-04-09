@@ -1,79 +1,44 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [ "$#" -lt 2 ]; then
-  echo "Uso: $0 <frontend|services> <branch> [app_dir] [compose_file] [environment]"
+if [ "$#" -lt 1 ]; then
+  echo "Uso: $0 <branch> [app_dir] [compose_file] [services...]"
   exit 1
 fi
 
-STACK="$1"
-BRANCH="$2"
-APP_DIR="${3:-/home/ec2-user/app}"
-COMPOSE_FILE="${4:-docker-compose.yml}"
-ENVIRONMENT="${5:-}"
+BRANCH="$1"
+APP_DIR="${2:-/home/ec2-user/app}"
+COMPOSE_FILE="${3:-docker-compose.yml}"
+DEPLOY_SERVICES=()
 
-if [ "$STACK" != "frontend" ] && [ "$STACK" != "services" ]; then
-  echo "Stack invalida: $STACK (use frontend ou services)"
-  exit 1
+if [ "$#" -ge 4 ]; then
+  DEPLOY_SERVICES=("${@:4}")
 fi
 
 cd "$APP_DIR"
 
 echo "[deploy] Atualizando codigo da branch $BRANCH"
 git fetch origin
-git checkout "$BRANCH"
+git checkout -B "$BRANCH" "origin/$BRANCH"
 git reset --hard "origin/$BRANCH"
-
-if [ -n "$ENVIRONMENT" ] && [ -f "scripts/sync-env-from-ssm.sh" ]; then
-  echo "[deploy] Sincronizando variaveis de ambiente do SSM para $ENVIRONMENT"
-  bash scripts/sync-env-from-ssm.sh "$ENVIRONMENT" "$APP_DIR/.env"
-elif [ -n "$ENVIRONMENT" ]; then
-  echo "[deploy] Aviso: scripts/sync-env-from-ssm.sh nao encontrado; seguindo sem sincronizar .env"
-fi
 
 if [ ! -f "$COMPOSE_FILE" ]; then
   echo "Arquivo compose nao encontrado: $COMPOSE_FILE"
   exit 1
 fi
 
-mapfile -t ALL_SERVICES < <(docker-compose -f "$COMPOSE_FILE" config --services)
-
-if [ "${#ALL_SERVICES[@]}" -eq 0 ]; then
-  echo "Nenhum servico encontrado em $COMPOSE_FILE"
-  exit 1
-fi
-
-FRONTEND_SERVICE=""
-for service in "piaca-frontend" "frontend"; do
-  if printf '%s\n' "${ALL_SERVICES[@]}" | grep -qx "$service"; then
-    FRONTEND_SERVICE="$service"
-    break
+compose() {
+  if docker compose version >/dev/null 2>&1; then
+    docker compose "$@"
+  else
+    docker-compose "$@"
   fi
-done
+}
 
-if [ "$STACK" = "frontend" ]; then
-  if [ -z "$FRONTEND_SERVICE" ]; then
-    echo "Nenhum servico de frontend (piaca-frontend/frontend) definido no compose. Deploy ignorado."
-    exit 0
-  fi
-
-  echo "[deploy] Subindo frontend: $FRONTEND_SERVICE"
-  docker-compose -f "$COMPOSE_FILE" up -d --build "$FRONTEND_SERVICE"
-  exit 0
+if [ "${#DEPLOY_SERVICES[@]}" -gt 0 ]; then
+  echo "[deploy] Subindo servicos selecionados: ${DEPLOY_SERVICES[*]}"
+  compose -f "$COMPOSE_FILE" up -d --build "${DEPLOY_SERVICES[@]}"
+else
+  echo "[deploy] Subindo stack completa"
+  compose -f "$COMPOSE_FILE" up -d --build
 fi
-
-DEPLOY_SERVICES=()
-for service in "${ALL_SERVICES[@]}"; do
-  if [ "$service" = "piaca-frontend" ] || [ "$service" = "frontend" ]; then
-    continue
-  fi
-  DEPLOY_SERVICES+=("$service")
-done
-
-if [ "${#DEPLOY_SERVICES[@]}" -eq 0 ]; then
-  echo "Nenhum servico de backend/infra encontrado para deploy."
-  exit 1
-fi
-
-echo "[deploy] Subindo servicos: ${DEPLOY_SERVICES[*]}"
-docker-compose -f "$COMPOSE_FILE" up -d --build "${DEPLOY_SERVICES[@]}"

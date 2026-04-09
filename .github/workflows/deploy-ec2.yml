@@ -1,0 +1,82 @@
+name: Deploy EC2
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'docker-compose.yml'
+      - 'piaca-backend/**'
+      - 'piaca-frontend/**'
+      - 'scripts/deploy-ec2.sh'
+      - '.github/workflows/deploy-ec2.yml'
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch para deploy na EC2'
+        required: false
+        default: 'main'
+
+concurrency:
+  group: deploy-ec2-main
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Validar secrets obrigatorios
+        run: |
+          if [ -z "${{ secrets.EC2_HOST }}" ]; then
+            echo "Secret EC2_HOST nao configurado"
+            exit 1
+          fi
+          if [ -z "${{ secrets.EC2_SSH_USER }}" ]; then
+            echo "Secret EC2_SSH_USER nao configurado"
+            exit 1
+          fi
+          if [ -z "${{ secrets.EC2_SSH_PRIVATE_KEY }}" ]; then
+            echo "Secret EC2_SSH_PRIVATE_KEY nao configurado"
+            exit 1
+          fi
+
+      - name: Deploy remoto via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_SSH_USER }}
+          key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+          script_stop: true
+          command_timeout: 30m
+          script: |
+            set -euo pipefail
+
+            APP_DIR="${{ secrets.EC2_APP_DIR }}"
+            if [ -z "$APP_DIR" ]; then
+              APP_DIR="/home/ec2-user/app"
+            fi
+
+            BRANCH="${{ github.ref_name }}"
+            if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ github.event.inputs.branch }}" ]; then
+              BRANCH="${{ github.event.inputs.branch }}"
+            fi
+
+            REPO_URL="https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
+
+            PARENT_DIR=$(dirname "$APP_DIR")
+            mkdir -p "$PARENT_DIR"
+
+            if [ ! -d "$APP_DIR/.git" ]; then
+              git clone "$REPO_URL" "$APP_DIR"
+            fi
+
+            cd "$APP_DIR"
+            git config --global --add safe.directory "$APP_DIR"
+            git remote set-url origin "$REPO_URL"
+            git fetch origin "$BRANCH"
+            git checkout -B "$BRANCH" "origin/$BRANCH"
+
+            chmod +x scripts/deploy-ec2.sh
+            ./scripts/deploy-ec2.sh "$BRANCH" "$APP_DIR" docker-compose.yml

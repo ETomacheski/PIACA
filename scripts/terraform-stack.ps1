@@ -5,10 +5,8 @@ param(
   [switch]$AutoApprove,
 
   [string]$NetworkDir = "piaca-infra/network",
-  [string]$RdsDir = "piaca-infra/rds",
   [string]$Ec2Dir = "piaca-infra/ec2",
 
-  [string]$RdsVarFile = "all-envs.tfvars",
   [string]$Ec2VarFile = "all-envs.tfvars"
 )
 
@@ -29,7 +27,7 @@ function Invoke-Step {
   )
 
   if (-not (Test-Path $Path)) {
-    throw "Pasta nao encontrada para $Name: $Path"
+    throw "Pasta nao encontrada para ${Name}: ${Path}"
   }
 
   Write-Host ""
@@ -47,7 +45,7 @@ function Invoke-Step {
 
     if ($VarFile -ne "") {
       if (-not (Test-Path $VarFile)) {
-        throw "Arquivo de variaveis nao encontrado em $Path: $VarFile"
+        throw "Arquivo de variaveis nao encontrado em ${Path}: ${VarFile}"
       }
       $args += "-var-file=$VarFile"
     }
@@ -69,7 +67,6 @@ function Invoke-Step {
 
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
 $networkPath = Join-Path $repoRoot $NetworkDir
-$rdsPath = Join-Path $repoRoot $RdsDir
 $ec2Path = Join-Path $repoRoot $Ec2Dir
 
 Write-Host "Repositorio: $repoRoot" -ForegroundColor Green
@@ -78,12 +75,10 @@ Write-Host "Acao: $Action" -ForegroundColor Green
 if ($Action -eq "destroy") {
   # Destruicao em ordem inversa para evitar dependencia quebrada.
   Invoke-Step -Name "EC2" -Path $ec2Path -TfAction $Action -VarFile $Ec2VarFile
-  Invoke-Step -Name "RDS" -Path $rdsPath -TfAction $Action -VarFile $RdsVarFile
   Invoke-Step -Name "Network" -Path $networkPath -TfAction $Action
 }
 else {
   Invoke-Step -Name "Network" -Path $networkPath -TfAction $Action
-  Invoke-Step -Name "RDS" -Path $rdsPath -TfAction $Action -VarFile $RdsVarFile
   Invoke-Step -Name "EC2" -Path $ec2Path -TfAction $Action -VarFile $Ec2VarFile
 }
 
