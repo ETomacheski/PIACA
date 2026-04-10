@@ -7,7 +7,7 @@ Em producao, o projeto roda em uma unica EC2 publica.
 - a EC2 sobe toda a stack com Docker Compose
 - o Postgres roda em container na mesma EC2
 - o Traefik recebe as requisicoes HTTP e roteia para os modulos
-- deploy remoto e basicamente atualizar codigo e executar docker compose up -d --build
+- deploy remoto e feito via AWS SSM (sem depender de SSH aberto para o pipeline)
 
 ## Arquitetura de roteamento (Traefik)
 
@@ -91,3 +91,21 @@ Parar tudo:
 ```bash
 docker compose down
 ```
+
+## Deploy automatico (GitHub Actions + SSM)
+
+O workflow `.github/workflows/deploy-ec2.yml` faz deploy em push na `main` via SSM.
+
+Fluxo:
+
+- encontra a EC2 por tag `Name` (default `piaca-ec2`)
+- envia comando remoto via SSM
+- na EC2 executa `git fetch/checkout` e `docker compose up -d --build`
+
+Secrets necessarios no GitHub:
+
+- `AWS_ACCESS_KEY_ID`
+- `AWS_SECRET_ACCESS_KEY`
+- `AWS_REGION` (exemplo: `us-east-1`)
+- `EC2_APP_DIR` (opcional, default `/home/ec2-user/app`)
+- `EC2_INSTANCE_TAG` (opcional, default `piaca-ec2`)

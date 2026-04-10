@@ -34,11 +34,39 @@ data "aws_key_pair" "key" {
   key_name = "piaca-key"
 }
 
+resource "aws_iam_role" "ec2_ssm_role" {
+  name = "piaca-ec2-ssm-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = {
+          Service = "ec2.amazonaws.com"
+        }
+        Action = "sts:AssumeRole"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "ec2_ssm_core" {
+  role       = aws_iam_role.ec2_ssm_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
+resource "aws_iam_instance_profile" "ec2_profile" {
+  name = "piaca-ec2-profile"
+  role = aws_iam_role.ec2_ssm_role.name
+}
+
 resource "aws_instance" "ec2" {
   ami           = var.ami_id
   instance_type = var.instance_type
 
   key_name                    = data.aws_key_pair.key.key_name
+  iam_instance_profile        = aws_iam_instance_profile.ec2_profile.name
   associate_public_ip_address = true
 
   vpc_security_group_ids = [
@@ -50,6 +78,9 @@ resource "aws_instance" "ec2" {
 yum update -y
 amazon-linux-extras install docker -y
 yum install -y awscli git
+yum install -y amazon-ssm-agent || true
+systemctl enable amazon-ssm-agent
+systemctl start amazon-ssm-agent
 systemctl start docker
 systemctl enable docker
 usermod -aG docker ec2-user
@@ -64,6 +95,8 @@ EOF
     Name        = var.instance_name
     Environment = "production"
   }
+
+  depends_on = [aws_iam_role_policy_attachment.ec2_ssm_core]
 }
 
 output "ip" {
