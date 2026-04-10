@@ -46,6 +46,7 @@ Esse comando sobe:
 - traefik
 - postgres
 - flyway
+- frontend
 - modulos habilitados no docker-compose.yml
 
 ## Variaveis de ambiente
