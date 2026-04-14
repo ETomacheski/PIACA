@@ -1,0 +1,166 @@
+name: Deploy EC2
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'docker-compose.yml'
+      - 'piaca-backend/**'
+      - 'piaca-frontend/**'
+      - 'scripts/deploy-ec2.sh'
+      - '.github/workflows/deploy-ec2.yml'
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch para deploy na EC2'
+        required: false
+        default: 'main'
+
+concurrency:
+  group: deploy-ec2-main
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Validar secrets obrigatorios
+        run: |
+          if [ -z "${{ secrets.AWS_ACCESS_KEY_ID }}" ]; then
+            echo "Secret AWS_ACCESS_KEY_ID nao configurado"
+            exit 1
+          fi
+          if [ -z "${{ secrets.AWS_SECRET_ACCESS_KEY }}" ]; then
+            echo "Secret AWS_SECRET_ACCESS_KEY nao configurado"
+            exit 1
+          fi
+          if [ -z "${{ secrets.AWS_REGION }}" ]; then
+            echo "Secret AWS_REGION nao configurado"
+            exit 1
+          fi
+
+      - name: Configurar credenciais AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Deploy remoto via SSM
+        run: |
+          set -euo pipefail
+
+          APP_DIR="${{ secrets.EC2_APP_DIR }}"
+          if [ -z "$APP_DIR" ]; then
+            APP_DIR="/home/ec2-user/app"
+          fi
+
+          INSTANCE_TAG="${{ secrets.EC2_INSTANCE_TAG }}"
+          if [ -z "$INSTANCE_TAG" ]; then
+            INSTANCE_TAG="piaca-ec2"
+          fi
+
+          BRANCH="${{ github.ref_name }}"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ github.event.inputs.branch }}" ]; then
+            BRANCH="${{ github.event.inputs.branch }}"
+          fi
+
+          INSTANCE_ID=$(aws ec2 describe-instances \
+            --filters "Name=tag:Name,Values=$INSTANCE_TAG" "Name=instance-state-name,Values=running" \
+            --query "Reservations[].Instances[].InstanceId | [0]" \
+            --output text)
+
+          if [ -z "$INSTANCE_ID" ] || [ "$INSTANCE_ID" = "None" ]; then
+            echo "Instancia com tag Name=$INSTANCE_TAG nao encontrada em running"
+            exit 1
+          fi
+
+          echo "Aguardando instancia $INSTANCE_ID ficar Online no SSM..."
+          for i in $(seq 1 20); do
+            PING_STATUS=$(aws ssm describe-instance-information \
+              --filters "Key=InstanceIds,Values=$INSTANCE_ID" \
+              --query "InstanceInformationList[0].PingStatus" \
+              --output text)
+
+            if [ "$PING_STATUS" = "Online" ]; then
+              echo "Instancia $INSTANCE_ID esta Online no SSM."
+              break
+            fi
+
+            if [ "$i" -eq 20 ]; then
+              echo "Instancia $INSTANCE_ID nao ficou Online no SSM"
+              exit 1
+            fi
+
+            sleep 15
+          done
+
+          REPO_URL="https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
+
+          cat > ssm-commands.json <<'EOF'
+          {"commands":[
+            "set -euo pipefail",
+            "if [ -z \"${HOME:-}\" ]; then HOME=$(getent passwd \"$(id -u)\" | cut -d: -f6 || true); export HOME; fi",
+            "if [ -z \"${HOME:-}\" ]; then HOME=/tmp; export HOME; fi",
+            "mkdir -p \"$HOME\"",
+            "APP_DIR='__APP_DIR__'",
+            "TARGET_BRANCH='__BRANCH__'",
+            "REPO_URL='__REPO_URL__'",
+            "PARENT_DIR=$(dirname \"$APP_DIR\")",
+            "mkdir -p \"$PARENT_DIR\"",
+            "if [ ! -d \"$APP_DIR/.git\" ]; then git clone \"$REPO_URL\" \"$APP_DIR\"; fi",
+            "cd \"$APP_DIR\"",
+            "git config --global --add safe.directory \"$APP_DIR\"",
+            "git remote set-url origin \"$REPO_URL\"",
+            "git fetch origin \"$TARGET_BRANCH\"",
+            "git checkout -B \"$TARGET_BRANCH\" \"origin/$TARGET_BRANCH\"",
+            "chmod +x scripts/deploy-ec2.sh",
+            "./scripts/deploy-ec2.sh \"$TARGET_BRANCH\" \"$APP_DIR\" docker-compose.yml"
+          ]}
+          EOF
+
+          ESCAPED_APP_DIR=${APP_DIR//&/\\&}
+          ESCAPED_BRANCH=${BRANCH//&/\\&}
+          ESCAPED_REPO_URL=${REPO_URL//&/\\&}
+          sed -i "s|__APP_DIR__|$ESCAPED_APP_DIR|g; s|__BRANCH__|$ESCAPED_BRANCH|g; s|__REPO_URL__|$ESCAPED_REPO_URL|g" ssm-commands.json
+
+          COMMAND_ID=$(aws ssm send-command \
+            --instance-ids "$INSTANCE_ID" \
+            --document-name "AWS-RunShellScript" \
+            --comment "PIACA deploy via SSM" \
+            --parameters file://ssm-commands.json \
+            --query "Command.CommandId" \
+            --output text)
+
+          set +e
+          aws ssm wait command-executed --command-id "$COMMAND_ID" --instance-id "$INSTANCE_ID"
+          WAIT_EXIT=$?
+          set -e
+
+          STATUS=$(aws ssm get-command-invocation \
+            --command-id "$COMMAND_ID" \
+            --instance-id "$INSTANCE_ID" \
+            --query "Status" \
+            --output text)
+
+          echo "----- SSM STDOUT -----"
+          aws ssm get-command-invocation \
+            --command-id "$COMMAND_ID" \
+            --instance-id "$INSTANCE_ID" \
+            --query "StandardOutputContent" \
+            --output text
+
+          echo "----- SSM STDERR -----"
+          aws ssm get-command-invocation \
+            --command-id "$COMMAND_ID" \
+            --instance-id "$INSTANCE_ID" \
+            --query "StandardErrorContent" \
+            --output text
+
+          if [ "$WAIT_EXIT" -ne 0 ] || [ "$STATUS" != "Success" ]; then
+            echo "Deploy falhou com status: $STATUS"
+            exit 1
+          fi

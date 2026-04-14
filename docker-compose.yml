@@ -1,5 +1,12 @@
 version: "3.9"
 
+x-db-env: &db-env
+  DB_HOST: ${DB_HOST:-postgres}
+  DB_PORT: ${DB_PORT:-5432}
+  DB_NAME: ${DB_NAME:-piaca_db}
+  DB_USER: ${DB_USER:-piaca_user}
+  DB_PASSWORD: ${DB_PASSWORD:-piaca_pass}
+
 services:
   traefik:
     image: traefik:v3.1
@@ -20,10 +27,30 @@ services:
     networks:
       - piaca-net
 
+  postgres:
+    image: postgres:16
+    container_name: piaca-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-piaca_db}
+      POSTGRES_USER: ${DB_USER:-piaca_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-piaca_pass}
+    ports:
+      - 5432:5432
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-piaca_user} -d ${DB_NAME:-piaca_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - piaca-net
+
   flyway:
     image: flyway/flyway:10
     container_name: piaca-flyway
-    command: -url=jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME} -user=${DB_USER} -password=${DB_PASSWORD} -locations=filesystem:/flyway/sql migrate
+    command: -url=jdbc:postgresql://${DB_HOST:-postgres}:${DB_PORT:-5432}/${DB_NAME:-piaca_db} -user=${DB_USER:-piaca_user} -password=${DB_PASSWORD:-piaca_pass} -connectRetries=30 -locations=filesystem:/flyway/sql migrate
     volumes:
       - ./piaca-backend/migrations:/flyway/sql
     networks:
@@ -35,12 +62,7 @@ services:
       dockerfile: Dockerfile
     container_name: example-module
     restart: unless-stopped
-    environment:
-      DB_HOST: ${DB_HOST}
-      DB_PORT: ${DB_PORT}
-      DB_NAME: ${DB_NAME}
-      DB_USER: ${DB_USER}
-      DB_PASSWORD: ${DB_PASSWORD}
+    environment: *db-env
     networks:
       - piaca-net
     labels:
@@ -55,12 +77,7 @@ services:
   #     dockerfile: Dockerfile
   #   container_name: piaca-core-auth
   #   restart: unless-stopped
-  #   environment:
-  #     DB_HOST: ${DB_HOST}
-  #     DB_PORT: ${DB_PORT}
-  #     DB_NAME: ${DB_NAME}
-  #     DB_USER: ${DB_USER}
-  #     DB_PASSWORD: ${DB_PASSWORD}
+  #   environment: *db-env
   #   networks:
   #     - piaca-net
   #   labels:
@@ -75,12 +92,7 @@ services:
   #     dockerfile: Dockerfile
   #   container_name: piaca-pet-management
   #   restart: unless-stopped
-  #   environment:
-  #     DB_HOST: ${DB_HOST}
-  #     DB_PORT: ${DB_PORT}
-  #     DB_NAME: ${DB_NAME}
-  #     DB_USER: ${DB_USER}
-  #     DB_PASSWORD: ${DB_PASSWORD}
+  #   environment: *db-env
   #   networks:
   #     - piaca-net
   #   labels:
@@ -95,12 +107,7 @@ services:
   #     dockerfile: Dockerfile
   #   container_name: piaca-adoption-ai
   #   restart: unless-stopped
-  #   environment:
-  #     DB_HOST: ${DB_HOST}
-  #     DB_PORT: ${DB_PORT}
-  #     DB_NAME: ${DB_NAME}
-  #     DB_USER: ${DB_USER}
-  #     DB_PASSWORD: ${DB_PASSWORD}
+  #   environment: *db-env
   #   networks:
   #     - piaca-net
   #   labels:
@@ -115,12 +122,7 @@ services:
   #     dockerfile: Dockerfile
   #   container_name: piaca-godparenthood
   #   restart: unless-stopped
-  #   environment:
-  #     DB_HOST: ${DB_HOST}
-  #     DB_PORT: ${DB_PORT}
-  #     DB_NAME: ${DB_NAME}
-  #     DB_USER: ${DB_USER}
-  #     DB_PASSWORD: ${DB_PASSWORD}
+  #   environment: *db-env
   #   networks:
   #     - piaca-net
   #   labels:
@@ -132,3 +134,6 @@ services:
 networks:
   piaca-net:
     driver: bridge
+
+volumes:
+  pgdata:
