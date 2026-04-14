@@ -4,6 +4,8 @@ CREATE TABLE donations (
     payment_date DATE,
     method VARCHAR(50),
     sponsorship_id UUID,
+    createdAt DATE,
+    updatedAt DATE,
     CONSTRAINT pk_donations PRIMARY KEY (id),
     CONSTRAINT fk_donations_sponsorship FOREIGN KEY (sponsorship_id) REFERENCES sponsorships(id)
 );
