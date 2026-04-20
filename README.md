@@ -38,6 +38,7 @@ Pre-requisitos:
 Na raiz do repositorio:
 
 ```bash
+docker volume create postgres_data (apenas uma vez)
 docker compose up -d --build
 ```
 
