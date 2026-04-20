@@ -1,0 +1,20 @@
+CREATE TABLE pets (
+    id UUID DEFAULT gen_random_uuid(),
+    ngo_id UUID,
+    protector_id UUID,
+    status INT,
+    species VARCHAR(100),
+    name VARCHAR(255),
+    age INT,
+    birth_date DATE,
+    link_id INT,
+    gender CHAR,
+    description TEXT,
+    city VARCHAR(100),
+    state VARCHAR(100),
+    createdAt DATE,
+    updatedAt DATE,
+    CONSTRAINT pk_pets PRIMARY KEY (id),
+    CONSTRAINT fk_pets_ngo FOREIGN KEY (ngo_id) REFERENCES ngos(id),
+    CONSTRAINT fk_pets_protector FOREIGN KEY (protector_id) REFERENCES protectors(id)
+);
