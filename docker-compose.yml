@@ -52,7 +52,7 @@ services:
     container_name: piaca-flyway
     command: -url=jdbc:postgresql://${DB_HOST:-postgres}:${DB_PORT:-5432}/${DB_NAME:-piaca_db} -user=${DB_USER:-piaca_user} -password=${DB_PASSWORD:-piaca_pass} -connectRetries=30 -locations=filesystem:/flyway/sql migrate
     volumes:
-      - ./piaca-backend/migrations:/flyway/sql
+    - ./piaca-backend/migrations:/flyway/sql
     networks:
       - piaca-net
 
