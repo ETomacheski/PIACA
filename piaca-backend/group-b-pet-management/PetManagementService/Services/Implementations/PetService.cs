@@ -12,9 +12,14 @@ namespace PetManagementService.Services
             _petRepository = petRepository;
         }
 
-        public async Task<List<Pet>> GetAllAsync()
+        public async Task<List<Pet>> GetAllPetsAsync()
         {
-            return await _petRepository.GetAllAsync();
+            return await _petRepository.GetAllPetsAsync();
+        }
+
+        public async Task<Pet?> GetSinglePetAsync(Guid petId)
+        {
+            return await _petRepository.GetSinglePetAsync(petId);
         }
     }
 }

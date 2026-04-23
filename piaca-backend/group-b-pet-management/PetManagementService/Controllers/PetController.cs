@@ -6,20 +6,31 @@ namespace PetManagementService.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class PetsController : ControllerBase
+    public class PetController : ControllerBase
     {
         private readonly IPetService _petService;
 
-        public PetsController(IPetService petService)
+        public PetController(IPetService petService)
         {
             _petService = petService;
         }
 
-        [HttpGet]
-        public async Task<ActionResult<List<Pet>>> GetAll()
+        [HttpGet("getAllPets")]
+        public async Task<ActionResult<List<Pet>>> GetAllPets()
         {
-            var pets = await _petService.GetAllAsync();
+            var pets = await _petService.GetAllPetsAsync();
             return Ok(pets);
+        }
+
+        [HttpGet("getPet")]
+        public async Task<ActionResult<List<Pet>>> GetSinglePets(Guid petId)
+        {
+            if (petId == Guid.Empty)
+            {
+                return BadRequest("A pet id must be provided");
+            }
+            var pet = await _petService.GetSinglePetAsync(petId);
+            return Ok(pet);
         }
     }
 }
