@@ -8,8 +8,8 @@ CREATE TABLE pet_details (
     color VARCHAR(100),
     reactivity TEXT,
     microchip BOOLEAN,
-    createdAt DATE,
-    updatedAt DATE,
+    created_at DATE,
+    updated_at DATE,
     CONSTRAINT pk_pet_details PRIMARY KEY (id),
     CONSTRAINT uq_pet_details_pet UNIQUE (pet_id),
     CONSTRAINT fk_pet_details_pet FOREIGN KEY (pet_id) REFERENCES pets(id)
