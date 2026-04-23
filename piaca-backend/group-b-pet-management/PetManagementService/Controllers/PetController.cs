@@ -18,19 +18,40 @@ namespace PetManagementService.Controllers
         [HttpGet("getAllPets")]
         public async Task<ActionResult<List<Pet>>> GetAllPets()
         {
-            var pets = await _petService.GetAllPetsAsync();
-            return Ok(pets);
+            try
+            {
+                var pets = await _petService.GetAllPetsAsync();
+                return Ok(pets);
+            }
+            catch
+            {
+                throw new Exception("An error occurred while fetching pets.");
+            }
+
         }
 
         [HttpGet("getPet")]
-        public async Task<ActionResult<List<Pet>>> GetSinglePets(Guid petId)
+        public async Task<ActionResult<Pet>> GetSinglePets(Guid petId)
         {
-            if (petId == Guid.Empty)
+            try
             {
-                return BadRequest("A pet id must be provided");
+                var pet = await _petService.GetSinglePetAsync(petId);
+
+                if (pet == null)
+                {
+                    return NotFound("Pet not found.");
+                }
+
+                return Ok(pet);
             }
-            var pet = await _petService.GetSinglePetAsync(petId);
-            return Ok(pet);
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+            catch
+            {
+                return StatusCode(500, "An unexpected error occurred.");
+            }
         }
     }
 }

@@ -19,6 +19,11 @@ namespace PetManagementService.Services
 
         public async Task<Pet?> GetSinglePetAsync(Guid petId)
         {
+            if (petId == Guid.Empty)
+            {
+                throw new ArgumentException("A valid pet id must be provided.");
+            }
+
             return await _petRepository.GetSinglePetAsync(petId);
         }
     }
