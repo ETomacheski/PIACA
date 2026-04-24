@@ -1,0 +1,57 @@
+http:
+  routers:
+    example:
+      entryPoints:
+        - web
+      rule: "PathPrefix(`/example`)"
+      service: example-service
+
+    core-auth:
+      entryPoints:
+        - web
+      rule: "PathPrefix(`/auth`)"
+      service: core-auth-service
+
+    pet-management:
+      entryPoints:
+        - web
+      rule: "PathPrefix(`/animals`)"
+      service: pet-management-service
+
+    adoption-ai:
+      entryPoints:
+        - web
+      rule: "PathPrefix(`/adoption`)"
+      service: adoption-ai-service
+
+    godparenthood:
+      entryPoints:
+        - web
+      rule: "PathPrefix(`/godparenthood`)"
+      service: godparenthood-service
+
+  services:
+    example-service:
+      loadBalancer:
+        servers:
+          - url: "http://example-module:3005"
+
+    core-auth-service:
+      loadBalancer:
+        servers:
+          - url: "http://piaca-core-auth:3001"
+
+    pet-management-service:
+      loadBalancer:
+        servers:
+          - url: "http://piaca-pet-management:3002"
+
+    adoption-ai-service:
+      loadBalancer:
+        servers:
+          - url: "http://piaca-adoption-ai:3003"
+
+    godparenthood-service:
+      loadBalancer:
+        servers:
+          - url: "http://piaca-godparenthood:3004"

@@ -24,7 +24,7 @@ const pool = new Pool({
 })
 
 const server = http.createServer(async (req, res) => {
-  if (req.url !== "/" && req.url !== "/example") {
+  if (!req.url.startsWith("/example") && req.url !== "/") {
     res.writeHead(404, { "Content-Type": "application/json" })
     res.end(JSON.stringify({ message: "route not found" }))
     return
@@ -32,13 +32,13 @@ const server = http.createServer(async (req, res) => {
 
   try {
     const result = await pool.query(
-      "SELECT id, name, created_at FROM test_table ORDER BY id"
+      'SELECT id, name, createdat FROM species_catalog ORDER BY name'
     )
 
     res.writeHead(200, { "Content-Type": "application/json" })
     res.end(
       JSON.stringify({
-        message: "example module running testtt",
+        message: "example module running",
         total: result.rows.length,
         data: result.rows
       })

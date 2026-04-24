@@ -13,19 +13,20 @@ services:
     container_name: piaca-traefik
     restart: unless-stopped
     command:
-      - --log.level=INFO
-      - --api.dashboard=true
-      - --api.insecure=true
-      - --providers.docker=true
-      - --providers.docker.exposedbydefault=false
-      - --providers.docker.network=piaca-net
-      - --entrypoints.web.address=:80
+      - --configFile=/etc/traefik/traefik.yml
     ports:
       - 80:80
+      - 8080:8080
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./piaca-infra/traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+      - ./piaca-infra/traefik/dynamic.yml:/etc/traefik/dynamic.yml:ro
     networks:
       - piaca-net
+    healthcheck:
+      test: ["CMD", "traefik", "healthcheck", "--ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   postgres:
     image: postgres:16
@@ -53,6 +54,9 @@ services:
     command: -url=jdbc:postgresql://${DB_HOST:-postgres}:${DB_PORT:-5432}/${DB_NAME:-piaca_db} -user=${DB_USER:-piaca_user} -password=${DB_PASSWORD:-piaca_pass} -connectRetries=30 -locations=filesystem:/flyway/sql migrate
     volumes:
       - ./piaca-backend/migrations:/flyway/sql
+    depends_on:
+      postgres:
+        condition: service_healthy
     networks:
       - piaca-net
 
@@ -63,13 +67,15 @@ services:
     container_name: example-module
     restart: unless-stopped
     environment: *db-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      flyway:
+        condition: service_completed_successfully
+      traefik:
+        condition: service_healthy
     networks:
       - piaca-net
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.example.rule=PathPrefix(`/example`)
-      - traefik.http.routers.example.entrypoints=web
-      - traefik.http.services.example.loadbalancer.server.port=3005
 
   # piaca-core-auth:
   #   build:
@@ -78,13 +84,15 @@ services:
   #   container_name: piaca-core-auth
   #   restart: unless-stopped
   #   environment: *db-env
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #     flyway:
+  #       condition: service_completed_successfully
+  #     traefik:
+  #       condition: service_healthy
   #   networks:
   #     - piaca-net
-  #   labels:
-  #     - traefik.enable=true
-  #     - traefik.http.routers.core-auth.rule=PathPrefix(`/auth`)
-  #     - traefik.http.routers.core-auth.entrypoints=web
-  #     - traefik.http.services.core-auth.loadbalancer.server.port=3001
 
   # piaca-pet-management:
   #   build:
@@ -93,13 +101,15 @@ services:
   #   container_name: piaca-pet-management
   #   restart: unless-stopped
   #   environment: *db-env
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #     flyway:
+  #       condition: service_completed_successfully
+  #     traefik:
+  #       condition: service_healthy
   #   networks:
   #     - piaca-net
-  #   labels:
-  #     - traefik.enable=true
-  #     - traefik.http.routers.pet-management.rule=PathPrefix(`/animals`)
-  #     - traefik.http.routers.pet-management.entrypoints=web
-  #     - traefik.http.services.pet-management.loadbalancer.server.port=3002
 
   # piaca-adoption-ai:
   #   build:
@@ -108,13 +118,15 @@ services:
   #   container_name: piaca-adoption-ai
   #   restart: unless-stopped
   #   environment: *db-env
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #     flyway:
+  #       condition: service_completed_successfully
+  #     traefik:
+  #       condition: service_healthy
   #   networks:
   #     - piaca-net
-  #   labels:
-  #     - traefik.enable=true
-  #     - traefik.http.routers.adoption-ai.rule=PathPrefix(`/adoption`)
-  #     - traefik.http.routers.adoption-ai.entrypoints=web
-  #     - traefik.http.services.adoption-ai.loadbalancer.server.port=3003
 
   # piaca-godparenthood:
   #   build:
@@ -123,13 +135,15 @@ services:
   #   container_name: piaca-godparenthood
   #   restart: unless-stopped
   #   environment: *db-env
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #     flyway:
+  #       condition: service_completed_successfully
+  #     traefik:
+  #       condition: service_healthy
   #   networks:
   #     - piaca-net
-  #   labels:
-  #     - traefik.enable=true
-  #     - traefik.http.routers.godparenthood.rule=PathPrefix(`/godparenthood`)
-  #     - traefik.http.routers.godparenthood.entrypoints=web
-  #     - traefik.http.services.godparenthood.loadbalancer.server.port=3004
 
 networks:
   piaca-net:
