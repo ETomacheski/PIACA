@@ -7,6 +7,8 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "Group C Adoption AI"
     API_PREFIX: str = "/api/v1"
 
+    GEMINI_API_KEY: str = ""
+
     DATABASE_URL: str | None = None
     DB_HOST: str = "localhost"
     DB_PORT: int = 5432

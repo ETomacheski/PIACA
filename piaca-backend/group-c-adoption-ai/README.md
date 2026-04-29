@@ -138,3 +138,7 @@ Copie `.env.example` para `.env` e ajuste os valores:
 ```bash
 cp .env.example .env
 ```
+
+
+## Gemini Client
+Adicionei um client base para o gemini. O uso é pareciso com o database.
