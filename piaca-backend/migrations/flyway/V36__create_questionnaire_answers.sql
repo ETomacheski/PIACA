@@ -6,5 +6,5 @@ CREATE TABLE questionnaire_answers (
     updated_at DATE,
     CONSTRAINT pk_questionnaire_answers PRIMARY KEY (id),
     CONSTRAINT fk_questionnaire_answers_user
-        FOREIGN KEY (userId) REFERENCES users(id)
+        FOREIGN KEY (user_id) REFERENCES users(id)
 );
