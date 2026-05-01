@@ -4,8 +4,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    PROJECT_NAME: str = "Group C Adoption AI"
-    API_PREFIX: str = "/api/v1"
+    PROJECT_NAME: str = "Adoption and AI module 🐶🐱"
+    API_PREFIX: str = "/api"
 
     GEMINI_API_KEY: str = ""
 
