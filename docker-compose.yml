@@ -111,22 +111,24 @@ services:
   #   networks:
   #     - piaca-net
 
-  # piaca-adoption-ai:
-  #   build:
-  #     context: ./piaca-backend/group-c-adoption-ai
-  #     dockerfile: Dockerfile
-  #   container_name: piaca-adoption-ai
-  #   restart: unless-stopped
-  #   environment: *db-env
-  #   depends_on:
-  #     postgres:
-  #       condition: service_healthy
-  #     flyway:
-  #       condition: service_completed_successfully
-  #     traefik:
-  #       condition: service_healthy
-  #   networks:
-  #     - piaca-net
+  piaca-adoption-ai:
+    build:
+      context: ./piaca-backend/group-c-adoption-ai
+      dockerfile: Dockerfile
+    ports: 
+      - "3003:3003"
+    container_name: piaca-adoption-ai
+    restart: unless-stopped
+    environment: *db-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      flyway:
+        condition: service_completed_successfully
+      traefik:
+        condition: service_healthy
+    networks:
+      - piaca-net
 
   # piaca-godparenthood:
   #   build:
