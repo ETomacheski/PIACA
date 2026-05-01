@@ -142,3 +142,21 @@ cp .env.example .env
 
 ## Gemini Client
 Adicionei um client base para o gemini. O uso é pareciso com o database.
+
+
+
+# Formatação:
+Instalem a extensão no VSCode: Ruff
+e coloquem isso aqui (dentro do objeto principal e único) no `.vscode/settings.json` de vocês desse repo:
+```json
+{
+    "[python]": {
+        "editor.defaultFormatter": "charliermarsh.ruff",
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+            "source.organizeImports": "explicit"
+        }
+    }
+}
+```
+Isso vai fazer com que o código e os imports sejam formatados no padrão do Python automaticamente. 
