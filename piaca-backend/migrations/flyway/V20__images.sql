@@ -3,8 +3,8 @@ CREATE TABLE images (
     file_name VARCHAR(255),
     s3_url TEXT,
     pet_id UUID,
-    createdAt DATE,
-    updatedAt DATE,
+    created_at DATE,
+    updated_at DATE,
     CONSTRAINT pk_images PRIMARY KEY (id),
     CONSTRAINT fk_images_pet FOREIGN KEY (pet_id) REFERENCES pets(id)
 );

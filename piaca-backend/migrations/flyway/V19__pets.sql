@@ -12,8 +12,8 @@ CREATE TABLE pets (
     description TEXT,
     city VARCHAR(100),
     state VARCHAR(100),
-    createdAt DATE,
-    updatedAt DATE,
+    created_at DATE,
+    updated_at DATE,
     CONSTRAINT pk_pets PRIMARY KEY (id),
     CONSTRAINT fk_pets_ngo FOREIGN KEY (ngo_id) REFERENCES ngos(id),
     CONSTRAINT fk_pets_protector FOREIGN KEY (protector_id) REFERENCES protectors(id)

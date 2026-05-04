@@ -3,8 +3,8 @@ CREATE TABLE attachments (
     occurrence_id UUID,
     file_name VARCHAR(255),
     s3_url TEXT,
-    createdAt DATE,
-    updatedAt DATE,
+    created_at DATE,
+    updated_at DATE,
     CONSTRAINT pk_attachments PRIMARY KEY (id),
     CONSTRAINT fk_attachments_occurrence FOREIGN KEY (occurrence_id) REFERENCES occurrences(id)
 );
