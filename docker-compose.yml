@@ -1,5 +1,3 @@
-version: "3.9"
-
 x-db-env: &db-env
   DB_HOST: ${DB_HOST:-postgres}
   DB_PORT: ${DB_PORT:-5432}
@@ -77,22 +75,26 @@ services:
     networks:
       - piaca-net
 
-  # piaca-core-auth:
-  #   build:
-  #     context: ./piaca-backend/group-a-core-auth
-  #     dockerfile: Dockerfile
-  #   container_name: piaca-core-auth
-  #   restart: unless-stopped
-  #   environment: *db-env
-  #   depends_on:
-  #     postgres:
-  #       condition: service_healthy
-  #     flyway:
-  #       condition: service_completed_successfully
-  #     traefik:
-  #       condition: service_healthy
-  #   networks:
-  #     - piaca-net
+  piaca-core-auth:
+    build:
+      context: ./piaca-backend/group-a-core-auth
+      dockerfile: Dockerfile
+    container_name: piaca-core-auth
+    restart: unless-stopped
+    environment:
+      <<: *db-env
+      PORT: 3001
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      flyway:
+        condition: service_completed_successfully
+      traefik:
+        condition: service_healthy
+    networks:
+      - piaca-net
 
   # piaca-pet-management:
   #   build:
