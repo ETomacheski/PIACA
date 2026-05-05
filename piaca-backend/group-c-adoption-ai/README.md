@@ -160,3 +160,29 @@ e coloquem isso aqui (dentro do objeto principal e único) no `.vscode/settings.
 }
 ```
 Isso vai fazer com que o código e os imports sejam formatados no padrão do Python automaticamente. 
+
+
+
+
+
+
+# Rodar com o banco local + uvicorn pra aplicação (mais leve pro computador)
+1. Subir o banco e rodar as migrations
+```
+# da raiz /PIACA/
+docker compose up postgres flyway -d
+```
+
+2. Garantir que `.env` existe (só na primeira vez)
+```
+cd piaca-backend/group-c-adoption-ai
+cp .env.example .env
+```
+O .env.example já vem com DB_HOST=localhost, que é o correto pra rodar o uvicorn fora do Docker.
+
+3. Subir o servidor
+``` 
+# ainda em piaca-backend/group-c-adoption-ai/
+uvicorn app.main:app --reload
+```
+Swagger disponível em http://127.0.0.1:8000/docs — a rota de criação estará em POST /api/v1/survey/questions/.
