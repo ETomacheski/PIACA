@@ -9,7 +9,7 @@ x-db-env: &db-env
 
 services:
   traefik:
-    image: traefik:v3.1
+    image: traefik:v2.11
     container_name: piaca-traefik
     restart: unless-stopped
     command:
@@ -116,20 +116,22 @@ services:
   #     - traefik.http.routers.adoption-ai.entrypoints=web
   #     - traefik.http.services.adoption-ai.loadbalancer.server.port=3003
 
-  # piaca-godparenthood:
-  #   build:
-  #     context: ./piaca-backend/group-d-godparenthood
-  #     dockerfile: Dockerfile
-  #   container_name: piaca-godparenthood
-  #   restart: unless-stopped
-  #   environment: *db-env
-  #   networks:
-  #     - piaca-net
-  #   labels:
-  #     - traefik.enable=true
-  #     - traefik.http.routers.godparenthood.rule=PathPrefix(`/godparenthood`)
-  #     - traefik.http.routers.godparenthood.entrypoints=web
-  #     - traefik.http.services.godparenthood.loadbalancer.server.port=3004
+  piaca-godparenthood:
+    build:
+      context: ./piaca-backend/group-d-godparenthood
+      dockerfile: Dockerfile
+    container_name: piaca-godparenthood
+    restart: unless-stopped
+    environment: *db-env
+    networks:
+      - piaca-net
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.godparenthood.rule=PathPrefix(`/godparenthood`)
+      - traefik.http.routers.godparenthood.entrypoints=web
+      - traefik.http.services.godparenthood.loadbalancer.server.port=3004
+      - traefik.http.middlewares.godparenthood-strip.stripprefix.prefixes=/godparenthood
+      - traefik.http.routers.godparenthood.middlewares=godparenthood-strip
 
 networks:
   piaca-net:
