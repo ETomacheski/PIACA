@@ -111,3 +111,15 @@ Secrets necessarios no GitHub:
 - `AWS_REGION` (exemplo: `us-east-1`)
 - `EC2_APP_DIR` (opcional, default `/home/ec2-user/app`)
 - `EC2_INSTANCE_TAG` (opcional, default `piaca-ec2`)
+
+## Grupo F: Infraestrutura e API Gateway
+
+| Aluno | Usuário do GitHub |
+|-------------|---------|
+| Estevam Cabral Pacheco | estevamcabral |
+| Juliano Maia | nextcoyocoatl |
+| Leonardo Francisco Sehnem dos Santos | Leosehn |
+| Luísa Scolari Pase | luscolari |
+| Marcela Nunes Zarichta | marcelazarichta |
+| Naiumy dos Reis| Naiumydosreis |
+
