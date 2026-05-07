@@ -112,6 +112,17 @@ Secrets necessarios no GitHub:
 - `EC2_APP_DIR` (opcional, default `/home/ec2-user/app`)
 - `EC2_INSTANCE_TAG` (opcional, default `piaca-ec2`)
 
+## Autores
+
+## Grupo C: Adoção e IA
+
+| Aluno | Usuário do GitHub |
+|-------------|---------|
+| Heloysa Gabrielle Pelizon | heloysapelizon |
+| Luiza Hackenhaar Naziazeno | luizahackenhaarnaziazeno |
+| Marina Schwerz Bon | marinasbon |
+| Kristen Arguello | kristenarguello |
+
 ## Grupo F: Infraestrutura e API Gateway
 
 | Aluno | Usuário do GitHub |
@@ -122,4 +133,3 @@ Secrets necessarios no GitHub:
 | Luísa Scolari Pase | luscolari |
 | Marcela Nunes Zarichta | marcelazarichta |
 | Naiumy dos Reis| Naiumydosreis |
-
